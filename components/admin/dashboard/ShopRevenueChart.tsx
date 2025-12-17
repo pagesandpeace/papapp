@@ -10,7 +10,16 @@ import {
   Tooltip,
 } from "recharts";
 
-export default function ShopRevenueChart({ data }: { data: any[] }) {
+type ChartPoint = {
+  month: string;
+  value: number;
+};
+
+export default function ShopRevenueChart({
+  data,
+}: {
+  data: ChartPoint[];
+}) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={data}>

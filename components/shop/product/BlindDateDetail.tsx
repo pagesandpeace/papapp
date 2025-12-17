@@ -10,15 +10,46 @@ import StockStatus from "./StockStatus";
 import ProductBadge from "./ProductBadge";
 import FulfilmentInfo from "./FulfilmentInfo";
 
-export default function BlindDateDetail({ product }: { product: any }) {
+/* ------------------------------------------
+   TYPES
+------------------------------------------ */
+
+type BlindDateProduct = {
+  id: string;
+  slug: string;
+  name: string;
+  price: number;
+
+  // inventory
+  inventory_count: number;
+
+  // images
+  image_url?: string | null;
+  imageUrl: string; // 👈 REQUIRED by cart / buy-now buttons
+
+  // metadata
+  genre_name?: string | null;
+  vibe_name?: string | null;
+  theme_name?: string | null;
+};
+
+/* ------------------------------------------
+   COMPONENT
+------------------------------------------ */
+
+export default function BlindDateDetail({
+  product,
+}: {
+  product: BlindDateProduct;
+}) {
   const [qty, setQty] = useState(1);
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
       {/* Image */}
-      {product.image_url && (
+      {(product.image_url || product.imageUrl) && (
         <Image
-          src={product.image_url}
+          src={product.image_url ?? product.imageUrl}
           alt={product.name}
           width={800}
           height={800}
@@ -30,9 +61,15 @@ export default function BlindDateDetail({ product }: { product: any }) {
 
       {/* Badges */}
       <div className="flex gap-3 mb-4">
-        <ProductBadge genre={product.genre_name} />
-        {product.vibe_name && <ProductBadge genre={product.vibe_name} />}
-        {product.theme_name && <ProductBadge genre={product.theme_name} />}
+        {product.genre_name && (
+          <ProductBadge genre={product.genre_name} />
+        )}
+        {product.vibe_name && (
+          <ProductBadge genre={product.vibe_name} />
+        )}
+        {product.theme_name && (
+          <ProductBadge genre={product.theme_name} />
+        )}
       </div>
 
       <PriceDisplay price={product.price} />
@@ -41,7 +78,11 @@ export default function BlindDateDetail({ product }: { product: any }) {
         <StockStatus count={product.inventory_count} />
       </div>
 
-      <QuantitySelector qty={qty} setQty={setQty} max={product.inventory_count} />
+      <QuantitySelector
+        qty={qty}
+        setQty={setQty}
+        max={product.inventory_count}
+      />
 
       <div className="flex flex-col gap-3 mt-6">
         <AddToCartButton product={product} qty={qty} />

@@ -1,6 +1,18 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 
+type OrderRow = {
+  id: string;
+  total: number | string;
+  status: string;
+  created_at: string;
+  stripe_receipt_url: string | null;
+  order_items: {
+    quantity: number;
+    price: number;
+  }[] | null;
+};
+
 export async function GET() {
   const supabase = await supabaseServer();
 
@@ -12,7 +24,7 @@ export async function GET() {
     return NextResponse.json({ orders: [] }, { status: 401 });
   }
 
-  // Single SQL query to fetch user orders + item counts
+  // Fetch user orders + item counts
   const { data, error } = await supabase
     .from("orders")
     .select(
@@ -37,8 +49,8 @@ export async function GET() {
   }
 
   // Format into a clean view model
-  const orders = (data || []).map((order: any) => {
-    const items = order.order_items || [];
+  const orders = (data ?? []).map((order: OrderRow) => {
+    const items = order.order_items ?? [];
 
     return {
       id: order.id,

@@ -7,27 +7,27 @@ export interface UserProfile {
   email?: string;
   name?: string;
   image?: string | null;
-  loyaltyprogram?: boolean;
-  loyaltypoints?: number;
   role?: string;
   auth_provider?: string;
 }
 
 export function useUser() {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
 
     async function load() {
       try {
-        const res = await fetch("/api/user/profile", { cache: "no-store" });
-        const json: { user: UserProfile | null } = await res.json();
+        const res = await fetch("/api/me", { cache: "no-store" });
+        const data = await res.json();
 
         if (!mounted) return;
 
-        setUser(json.user ?? null);
+        if (data?.id) setUser(data);
+        else setUser(null);
+
         setLoading(false);
       } catch (err) {
         console.error("❌ useUser failed:", err);

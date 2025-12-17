@@ -17,7 +17,10 @@ type OrderRow = {
 type ItemRow = {
   quantity: number;
   price: string | number;
-  products: { name: string | null } | { name: string | null }[] | null;
+  name?: string | null;
+  kind?: string | null;
+  products?: { name: string | null } | { name: string | null }[] | null;
+  events?: { title: string | null } | { title: string | null }[] | null;
 };
 
 export async function GET(req: Request) {
@@ -46,16 +49,17 @@ export async function GET(req: Request) {
       );
     }
 
-    // Load items + product join
+    // Load items + product/event joins
     const { data: items, error: itemsErr } = await supabase
       .from("order_items")
-      .select(
-        `
+      .select(`
         quantity,
         price,
-        products(name)
-      `
-      )
+        name,
+        kind,
+        products(name),
+        events(title)
+      `)
       .eq("order_id", orderId)
       .returns<ItemRow[]>();
 
@@ -63,12 +67,19 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: itemsErr.message }, { status: 500 });
     }
 
-    const safeItems = items.map((it) => {
+    const safeItems = (items ?? []).map((it) => {
       const product =
         Array.isArray(it.products) ? it.products[0] : it.products;
 
+      const event =
+        Array.isArray(it.events) ? it.events[0] : it.events;
+
       return {
-        productName: product?.name ?? "Unknown Product",
+        productName:
+          it.name ??
+          product?.name ??
+          event?.title ??
+          "Unknown Item",
         quantity: it.quantity,
         price: Number(it.price),
       };

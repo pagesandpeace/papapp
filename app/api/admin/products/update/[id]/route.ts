@@ -1,23 +1,31 @@
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 
-export async function POST(req: Request, context: any) {
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    // ⭐ Correct Next.js 15 param unwrapping
+    /* -------------------------
+       ✅ UNWRAP PARAMS (REQUIRED)
+    ------------------------- */
     const { id: productId } = await context.params;
 
     console.log("🔎 Updating product:", productId);
 
     const supabase = await supabaseServer();
 
-    // -------------------------
-    // AUTH CHECK
-    // -------------------------
+    /* -------------------------
+       AUTH CHECK
+    ------------------------- */
     const { data: auth } = await supabase.auth.getUser();
     if (!auth?.user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 }
+      );
     }
 
     const { data: profile } = await supabase
@@ -27,18 +35,21 @@ export async function POST(req: Request, context: any) {
       .maybeSingle();
 
     if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Admins only" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Admins only" },
+        { status: 403 }
+      );
     }
 
-    // -------------------------
-    // READ BODY
-    // -------------------------
+    /* -------------------------
+       READ BODY
+    ------------------------- */
     const body = await req.json();
     console.log("📨 Incoming body:", body);
 
-    // -------------------------
-    // VALID FIELDS
-    // -------------------------
+    /* -------------------------
+       ALLOWED FIELDS
+    ------------------------- */
     const updatableFields = [
       "name",
       "slug",
@@ -49,37 +60,31 @@ export async function POST(req: Request, context: any) {
       "author",
       "format",
       "language",
-      "genre_id",    // TEXT COLUMN
-      "vibe_id",     // UUID
-      "theme_id"     // UUID
-    ];
+      "genre_id",
+      "vibe_id",
+      "theme_id",
+    ] as const;
 
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
 
-    // -------------------------
-    // CLEAN / NORMALISE FIELDS
-    // -------------------------
     for (const key of updatableFields) {
       const value = body[key];
 
-      // treat "" as NULL (clearing the field)
       if (value === "") {
         updateData[key] = null;
         continue;
       }
 
-      // keep undefined values untouched
-      if (value === undefined) continue;
-
-      // normal assignment
-      updateData[key] = value;
+      if (value !== undefined) {
+        updateData[key] = value;
+      }
     }
 
     console.log("🛠 Final updateData:", updateData);
 
-    // -------------------------
-    // UPDATE DB
-    // -------------------------
+    /* -------------------------
+       UPDATE PRODUCT
+    ------------------------- */
     const { data, error } = await supabase
       .from("products")
       .update(updateData)
@@ -87,15 +92,17 @@ export async function POST(req: Request, context: any) {
       .select()
       .maybeSingle();
 
-    console.log("📤 Update result:", data, "error:", error);
-
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("❌ DB error:", error);
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
     }
 
     if (!data) {
       return NextResponse.json(
-        { error: "Product not found after update" },
+        { error: "Product not found" },
         { status: 404 }
       );
     }
@@ -104,6 +111,9 @@ export async function POST(req: Request, context: any) {
 
   } catch (err) {
     console.error("🔥 Update route crashed:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Server error" },
+      { status: 500 }
+    );
   }
 }

@@ -1,7 +1,27 @@
 import Image from "next/image";
 import Link from "next/link";
 
-export default function ShopHero({ block }: { block: any }) {
+/* ------------------------------------------
+   TYPES
+------------------------------------------ */
+
+type ShopHeroBlock = {
+  title: string;
+  subtitle?: string | null;
+  image_url?: string | null;
+  cta_text?: string | null;
+  cta_link?: string | null;
+};
+
+/* ------------------------------------------
+   COMPONENT
+------------------------------------------ */
+
+export default function ShopHero({
+  block,
+}: {
+  block: ShopHeroBlock | null;
+}) {
   if (!block) return null;
 
   return (
@@ -20,9 +40,13 @@ export default function ShopHero({ block }: { block: any }) {
           {block.title}
         </h2>
 
-        <p className="text-white/90 text-lg mb-4">{block.subtitle}</p>
+        {block.subtitle && (
+          <p className="text-white/90 text-lg mb-4">
+            {block.subtitle}
+          </p>
+        )}
 
-        {block.cta_text && (
+        {block.cta_text && block.cta_link && (
           <Link
             href={block.cta_link}
             className="inline-block px-5 py-2 bg-white text-black rounded-lg font-semibold shadow"

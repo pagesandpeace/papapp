@@ -4,8 +4,23 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardBody } from "@/components/ui/Card";
 
-export default function EventCard({ event }) {
-  const seatsBooked = event.event_bookings?.length || 0;
+type Event = {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  date: string;
+  capacity: number;
+  price_pence: number;
+  published: boolean;
+  event_bookings?: { id: string }[] | null;
+};
+
+type EventCardProps = {
+  event: Event;
+};
+
+export default function EventCard({ event }: EventCardProps) {
+  const seatsBooked = event.event_bookings?.length ?? 0;
   const seatsLeft = event.capacity - seatsBooked;
 
   return (
@@ -44,7 +59,8 @@ export default function EventCard({ event }) {
         </p>
 
         <p className="text-sm text-neutral-800">
-          Price: <strong>£{(event.price_pence / 100).toFixed(2)}</strong>
+          Price:{" "}
+          <strong>£{(event.price_pence / 100).toFixed(2)}</strong>
         </p>
 
         <p className="text-sm text-neutral-800">
@@ -62,7 +78,7 @@ export default function EventCard({ event }) {
             <Button variant="primary">View / Edit</Button>
           </Link>
 
-          <Button variant="secondary">Duplicate</Button>
+          <Button variant="outline">Duplicate</Button>
         </div>
       </CardBody>
     </Card>

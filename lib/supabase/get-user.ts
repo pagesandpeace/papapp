@@ -9,9 +9,8 @@ export async function getUser() {
 
   return {
     id: data.user.id,
-    email: data.user.email,
+    email: data.user.email ?? "",
     name: data.user.user_metadata?.name ?? "",
     avatar_url: data.user.user_metadata?.avatar_url ?? "",
-    loyaltyprogram: data.user.user_metadata?.loyaltyprogram ?? false,
   };
 }

@@ -11,6 +11,10 @@ import BuyNowButton from "./BuyNowButton";
 import FulfilmentInfo from "./FulfilmentInfo";
 import ProductBadge from "./ProductBadge";
 
+/* ------------------------------------------
+   TYPES
+------------------------------------------ */
+
 type ProductDetailProps = {
   product: {
     id: string;
@@ -28,12 +32,15 @@ type ProductDetailProps = {
 
     // book-only
     author?: string | null;
-    genre_id?: string | null;
 
-    // metadata (only colour remains here)
+    // metadata
     metadata?: { colour?: string | null } | null;
   };
 };
+
+/* ------------------------------------------
+   COMPONENT
+------------------------------------------ */
 
 export default function ProductDetail({ product }: ProductDetailProps) {
   const [qty, setQty] = useState(1);
@@ -46,6 +53,19 @@ export default function ProductDetail({ product }: ProductDetailProps) {
   const vibeName = product.vibe?.name ?? null;
   const themeName = product.theme?.name ?? null;
   const genreName = product.genre?.name ?? null;
+
+  // 🔑 NORMALISE PRODUCT FOR CART / BUY-NOW
+  const cartProduct = {
+    id: product.id,
+    slug: product.slug,
+    name: product.name,
+    price:
+      typeof product.price === "string"
+        ? Number(product.price)
+        : product.price,
+    imageUrl: product.image_url ?? "", // required by buttons
+    inventory_count: product.inventory_count,
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
@@ -63,17 +83,18 @@ export default function ProductDetail({ product }: ProductDetailProps) {
       </div>
 
       {/* TITLE */}
-      <h1 className="text-3xl font-semibold mb-2">{product.name}</h1>
+      <h1 className="text-3xl font-semibold mb-2">
+        {product.name}
+      </h1>
 
-      {/* BOOK / BLIND-DATE BADGE (use genre NAME, not ID) */}
+      {/* BOOK / BLIND-DATE BADGE */}
       {isBookLike && genreName && (
         <ProductBadge genre={genreName} />
       )}
 
-      {/* BOOK / BLIND-DATE META BLOCK */}
+      {/* BOOK / BLIND-DATE META */}
       {isBookLike && (
-        <div className="mt-4 space-y-2 text-[var(--foreground)]/80 text-sm">
-          {/* Author (likely only for books, but safe for both) */}
+        <div className="mt-4 space-y-2 text-foreground/80 text-sm">
           {product.author && (
             <p>
               <strong>Author:</strong> {product.author}
@@ -98,7 +119,6 @@ export default function ProductDetail({ product }: ProductDetailProps) {
             </p>
           )}
 
-          {/* Colour only really matters for blind-date wraps */}
           {isBlindDate && colour && (
             <div className="flex items-center gap-2">
               <strong>Colour:</strong>
@@ -111,15 +131,9 @@ export default function ProductDetail({ product }: ProductDetailProps) {
         </div>
       )}
 
-      {/* PRICE DISPLAY */}
+      {/* PRICE */}
       <div className="mt-6">
-        <PriceDisplay
-          price={
-            typeof product.price === "string"
-              ? Number(product.price)
-              : product.price
-          }
-        />
+        <PriceDisplay price={cartProduct.price} />
       </div>
 
       {/* STOCK */}
@@ -127,17 +141,17 @@ export default function ProductDetail({ product }: ProductDetailProps) {
         <StockStatus count={product.inventory_count} />
       </div>
 
-      {/* QTY SELECTOR */}
+      {/* QTY */}
       <QuantitySelector
         qty={qty}
         setQty={setQty}
         max={product.inventory_count}
       />
 
-      {/* BUTTONS */}
+      {/* ACTIONS */}
       <div className="flex flex-col gap-3 mt-6">
-        <AddToCartButton product={product} qty={qty} />
-        <BuyNowButton product={product} qty={qty} />
+        <AddToCartButton product={cartProduct} qty={qty} />
+        <BuyNowButton product={cartProduct} qty={qty} />
       </div>
 
       {/* FULFILMENT */}
@@ -148,9 +162,10 @@ export default function ProductDetail({ product }: ProductDetailProps) {
   );
 }
 
-/* ------------------------------------------------------
+/* ------------------------------------------
    COLOUR MAPPER
------------------------------------------------------- */
+------------------------------------------ */
+
 function getColour(name: string) {
   const map: Record<string, string> = {
     "Brown Kraft": "#c2a679",
@@ -165,5 +180,6 @@ function getColour(name: string) {
     Burgundy: "#800020",
     Black: "#000000",
   };
+
   return map[name] || "#dcdcdc";
 }

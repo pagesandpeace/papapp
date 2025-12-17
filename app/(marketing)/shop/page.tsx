@@ -24,40 +24,38 @@ export default async function ShopPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-
   const supabase = await supabaseServer();
 
   /* ----------------------------------------------------
-   1. LOAD HERO BLOCK (Supabase only)
----------------------------------------------------- */
-console.log("🟣 Loading hero block…");
+     1. LOAD HERO BLOCK
+  ---------------------------------------------------- */
+  console.log("🟣 Loading hero block…");
 
-const { data: heroBlock, error: heroError } = await supabase
-  .from("marketing_blocks")
-  .select("*")
-  .eq("key", "shop_hero")
-  .maybeSingle();
+  const { data: heroBlock, error: heroError } = await supabase
+    .from("marketing_blocks")
+    .select("*")
+    .eq("key", "shop_hero")
+    .maybeSingle();
 
-console.log("🔵 heroBlock:", heroBlock);
-console.log("🔴 heroError:", heroError);
+  console.log("🔵 heroBlock:", heroBlock);
+  console.log("🔴 heroError:", heroError);
 
-let heroActive = false;
+  let heroActive = false;
 
-if (heroBlock) {
-  const now = new Date();
-  const starts = heroBlock.starts_at ? new Date(heroBlock.starts_at) : null;
-  const ends = heroBlock.ends_at ? new Date(heroBlock.ends_at) : null;
+  if (heroBlock) {
+    const now = new Date();
+    const starts = heroBlock.starts_at ? new Date(heroBlock.starts_at) : null;
+    const ends = heroBlock.ends_at ? new Date(heroBlock.ends_at) : null;
 
-  heroActive =
-    heroBlock.visible &&
-    (!starts || starts <= now) &&
-    (!ends || now <= ends);
+    heroActive =
+      heroBlock.visible &&
+      (!starts || starts <= now) &&
+      (!ends || now <= ends);
 
-  console.log("🟢 heroActive:", heroActive);
-  console.log("🟡 Starts:", starts);
-  console.log("🟡 Ends:", ends);
-}
-
+    console.log("🟢 heroActive:", heroActive);
+    console.log("🟡 Starts:", starts);
+    console.log("🟡 Ends:", ends);
+  }
 
   /* -----------------------------
      GENRES
@@ -67,7 +65,7 @@ if (heroBlock) {
     .select("*")
     .order("name");
 
-  const genres: { id: string; name: string }[] = genresData ?? [];
+  const genres = genresData ?? [];
 
   /* -----------------------------
      AUTHORS
@@ -75,9 +73,10 @@ if (heroBlock) {
   const { data: authorRows } = await supabase
     .from("products")
     .select("author")
-    .neq("author", null);
+    .neq("author", null)
+    .neq("product_type", "event"); // 🔒 HARD EXCLUDE EVENTS
 
-  const authors: string[] = [
+  const authors = [
     ...new Set((authorRows ?? []).map((a) => a.author)),
   ];
 
@@ -102,10 +101,13 @@ if (heroBlock) {
   const themes = themesData ?? [];
 
   /* -----------------------------
-     PRODUCTS
+     PRODUCTS (EVENTS EXCLUDED IN fetchProducts)
   ------------------------------ */
   const { products, total, page, pageSize } = await fetchProducts(params);
 
+  /* -----------------------------
+     CATEGORY TABS (NO EVENTS)
+  ------------------------------ */
   const CATEGORIES = [
     { key: "all", label: "All" },
     { key: "book", label: "Books" },
@@ -113,18 +115,16 @@ if (heroBlock) {
     { key: "coffee", label: "Coffee" },
     { key: "merch", label: "Merch" },
     { key: "physical", label: "Gifts" },
-    { key: "event", label: "Events" },
   ];
 
   return (
     <main className="min-h-screen bg-[#FAF6F1] px-6 py-12">
-
       {/* -------------------------------------------------
-          SHOP HERO (Supabase-managed, optional)
+          SHOP HERO
       -------------------------------------------------- */}
       {heroActive && (
         <div className="relative w-full h-[260px] md:h-[340px] rounded-xl overflow-hidden shadow-lg mb-10 max-w-5xl mx-auto">
-          {heroBlock.image_url && (
+          {heroBlock?.image_url && (
             <img
               src={heroBlock.image_url}
               alt={heroBlock.title}
@@ -134,14 +134,14 @@ if (heroBlock) {
 
           <div className="absolute inset-0 bg-black/40 flex flex-col justify-center px-8 py-6">
             <h2 className="text-white text-3xl md:text-5xl font-bold drop-shadow mb-2">
-              {heroBlock.title}
+              {heroBlock?.title}
             </h2>
 
             <p className="text-white/90 text-lg md:text-xl max-w-2xl mb-4">
-              {heroBlock.subtitle}
+              {heroBlock?.subtitle}
             </p>
 
-            {heroBlock.cta_text && (
+            {heroBlock?.cta_text && (
               <a
                 href={heroBlock.cta_link}
                 className="inline-block bg-white text-black px-6 py-2 rounded-full font-semibold hover:bg-neutral-200 transition shadow"
@@ -153,7 +153,9 @@ if (heroBlock) {
         </div>
       )}
 
-      <h1 className="text-4xl font-semibold mb-6">Shop Pages & Peace</h1>
+      <h1 className="text-4xl font-semibold mb-6">
+        Shop Pages & Peace
+      </h1>
 
       <div className="max-w-5xl mx-auto mb-8">
         <CategoryTabs categories={CATEGORIES} />
@@ -167,6 +169,7 @@ if (heroBlock) {
       />
 
       <ProductGrid products={products} />
+
       <Pagination total={total} page={page} pageSize={pageSize} />
     </main>
   );

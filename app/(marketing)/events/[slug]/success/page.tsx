@@ -5,24 +5,24 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
-export default async function EventSuccessPage({
-  params,
-  searchParams,
-}: {
-  params: { slug: string };
-  searchParams: { session_id?: string };
+export default async function EventSuccessPage(props: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ session_id?: string }>;
 }) {
+  const params = await props.params;
+  const searchParams = await props.searchParams;
+
   const { slug } = params;
   const sessionId = searchParams.session_id;
 
   if (!sessionId) {
-    return redirect("/events");
+    redirect("/events");
   }
 
   const supabase = await supabaseServer();
 
   /* ------------------------------------------
-     1. Fetch event via slug
+     1. Fetch event
   ------------------------------------------- */
   const { data: event, error: eventErr } = await supabase
     .from("events")
@@ -30,22 +30,25 @@ export default async function EventSuccessPage({
     .eq("slug", slug)
     .single();
 
-  if (eventErr || !event) {
+  if (!event || eventErr) {
     console.error("❌ Event not found:", eventErr);
-    return redirect("/events");
+    redirect("/events");
   }
 
   /* ------------------------------------------
-     2. Verify booking was created by webhook
+     2. Verify booking exists (safety check)
+     NOTE: Webhook is authoritative
   ------------------------------------------- */
   const { data: booking } = await supabase
     .from("event_bookings")
-    .select("*")
+    .select("id")
     .eq("stripe_checkout_session_id", sessionId)
-    .single();
+    .maybeSingle();
 
-  // If missing: webhook hasn't fired yet
-  const bookingCreated = Boolean(booking);
+  if (!booking) {
+    console.warn("⚠️ Booking not found for session:", sessionId);
+    // Still show success page — Stripe payment already completed
+  }
 
   /* ------------------------------------------
      3. Render
@@ -53,25 +56,21 @@ export default async function EventSuccessPage({
   return (
     <main className="min-h-screen bg-background flex items-center justify-center p-10">
       <div className="bg-white shadow-sm border border-accent/10 rounded-2xl max-w-xl p-10 text-center">
-
         <h1 className="text-3xl font-bold text-foreground mb-4">
-          Booking Confirmed 🎉
+          Booking confirmed 🎉
         </h1>
 
         <p className="text-foreground/80 mb-6 text-lg">
-          Your place at <strong>{event.title}</strong> has been booked.
+          Your place at <strong>{event.title}</strong> is secured.
         </p>
 
-        {/* Handle webhook delay */}
-        {!bookingCreated && (
-          <p className="text-amber-600 font-medium mb-6">
-            Your payment is confirmed — finalising your booking…
-            <br />
-            Refresh in a moment.
-          </p>
-        )}
+        <p className="text-foreground/70 mb-8">
+          We’ve sent a confirmation email with your booking details.
+          <br />
+          You can view your booking anytime in your account.
+        </p>
 
-        <div className="space-y-4 mt-8">
+        <div className="space-y-4">
           <Link
             href={`/events/${event.slug}`}
             className="block bg-accent text-white py-3 rounded-lg font-semibold hover:opacity-90"

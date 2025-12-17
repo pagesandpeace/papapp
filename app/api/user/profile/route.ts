@@ -1,4 +1,3 @@
-// app/api/user/profile/route.ts
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 
@@ -16,7 +15,7 @@ export async function GET() {
   // Try loading via email
   let { data: profile } = await supabase
     .from("users")
-    .select("id, email, name, image, loyaltyprogram, loyaltypoints, role, auth_provider")
+    .select("id, email, name, image, role, auth_provider")
     .eq("email", authEmail)
     .maybeSingle();
 
@@ -24,7 +23,7 @@ export async function GET() {
   if (!profile) {
     const { data: byId } = await supabase
       .from("users")
-      .select("id, email, name, image, loyaltyprogram, loyaltypoints, role, auth_provider")
+      .select("id, email, name, image, role, auth_provider")
       .eq("id", authId)
       .maybeSingle();
 
@@ -39,8 +38,6 @@ export async function GET() {
         email: authEmail,
         name: "",
         image: null,
-        loyaltyprogram: false,
-        loyaltypoints: 0,
         role: "customer",
         auth_provider: "credentials",
       },
@@ -53,18 +50,15 @@ export async function GET() {
       name: profile.name ?? "",
       email: profile.email,
       image: profile.image ?? null,
-      loyaltyprogram: profile.loyaltyprogram ?? false,
-      loyaltypoints: profile.loyaltypoints ?? 0,
       role: profile.role ?? "customer",
       auth_provider: profile.auth_provider ?? "credentials",
     },
   });
 }
 
-
-// -------------------------------------------------------
-// PATCH — update display name
-// -------------------------------------------------------
+/* -------------------------------------------------------
+   PATCH — update display name
+------------------------------------------------------- */
 export async function PATCH(req: Request) {
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();

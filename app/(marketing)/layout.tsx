@@ -1,4 +1,3 @@
-// src/app/(marketing)/layout.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -16,47 +15,38 @@ export default function MarketingLayout({
   const [loading, setLoading] = useState(true);
 
   /* ----------------------------------------------------
-     SAFE USER LOAD — NEVER THROWS, NEVER CRASHES
+     LOYALTY STATUS CHECK (SINGLE SOURCE OF TRUTH)
   ---------------------------------------------------- */
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch("/api/me", {
-          cache: "no-store",
-          credentials: "include",
-        });
+  async function load() {
+    try {
+      const res = await fetch("/api/loyalty/me", {
+        cache: "no-store",
+        credentials: "include",
+      });
 
-        // If API/me fails → treat as logged out
-        if (!res.ok) {
-          console.warn("[MarketingLayout] /api/me returned non-OK:", res.status);
-          setJoined(false);
-          setBanner("🌿 Join the Pages & Peace Loyalty Club and earn points!");
-          return;
-        }
+      const data = await res.json();
+      const isMember = Boolean(data?.member);
 
-        const me = await res.json().catch((e) => {
-          console.warn("[MarketingLayout] JSON parse failed:", e);
-          return null;
-        });
-
-        if (me?.loyaltyprogram) {
-          setJoined(true);
-          setBanner("✅ You’re in the Pages & Peace Loyalty Club!");
-        } else {
-          setJoined(false);
-          setBanner("🌿 Join the Pages & Peace Loyalty Club and earn points!");
-        }
-      } catch (err) {
-        console.warn("[MarketingLayout] Fetch /api/me failed:", err);
+      if (isMember) {
+        setJoined(true);
+        setBanner(null); // ← NEVER show banner for members
+      } else {
         setJoined(false);
         setBanner("🌿 Join the Pages & Peace Loyalty Club and earn points!");
-      } finally {
-        setLoading(false);
       }
+    } catch (err) {
+      console.warn("[MarketingLayout] Loyalty check failed:", err);
+      setJoined(false);
+      setBanner("🌿 Join the Pages & Peace Loyalty Club and earn points!");
+    } finally {
+      setLoading(false);
     }
+  }
 
-    load();
-  }, []);
+  load();
+}, []);
+
 
   const handleJoinClick = () => setShowModal(true);
 
@@ -65,6 +55,7 @@ export default function MarketingLayout({
       {!loading && banner && (
         <div className="w-full bg-[var(--accent)] text-[var(--background)] text-center py-2 px-4 font-semibold text-sm flex justify-center items-center gap-4 flex-wrap">
           <span>{banner}</span>
+
           {!joined && (
             <button
               onClick={handleJoinClick}
@@ -84,9 +75,13 @@ export default function MarketingLayout({
         <LoyaltyJoinModal
           onClose={() => setShowModal(false)}
           onSuccess={() => {
+            localStorage.setItem("pp:loyalty-confirmed", "true");
             setJoined(true);
-            setBanner("✅ You’re in the Pages & Peace Loyalty Club!");
+            setBanner(null); // hide immediately after success
             setShowModal(false);
+
+            // Optional: let other UI refresh later
+            window.dispatchEvent(new Event("pp:loyalty-updated"));
           }}
         />
       )}

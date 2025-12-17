@@ -9,8 +9,6 @@ type UserProfile = {
   email: string;
   name: string | null;
   image: string | null;
-  loyaltyprogram: boolean | null;
-  loyaltypoints: number | null;
   role: string | null;
   auth_provider: string | null;
 };
@@ -21,9 +19,13 @@ export async function GET() {
   const supabase = await supabaseServer();
   const { data: auth, error: authErr } = await supabase.auth.getUser();
 
-  if (authErr) console.error("❌ getUser error:", authErr);
+  if (authErr) {
+    console.error("❌ getUser error:", authErr);
+  }
 
+  // --------------------------------------------------
   // No logged-in session
+  // --------------------------------------------------
   if (!auth?.user) {
     console.log("🔓 No auth → return null");
     return NextResponse.json({ id: null });
@@ -34,41 +36,48 @@ export async function GET() {
 
   let profile: UserProfile | null = null;
 
-  // Try find by email
+  // --------------------------------------------------
+  // Try find profile by email
+  // --------------------------------------------------
   {
     const { data } = await supabase
       .from("users")
-      .select("*")
+      .select("id, email, name, image, role, auth_provider")
       .eq("email", authEmail)
       .maybeSingle();
 
     if (data) profile = data as UserProfile;
   }
 
-  // Try find by id
+  // --------------------------------------------------
+  // Fallback: try find profile by ID
+  // --------------------------------------------------
   if (!profile) {
     const { data } = await supabase
       .from("users")
-      .select("*")
+      .select("id, email, name, image, role, auth_provider")
       .eq("id", authId)
       .maybeSingle();
 
     if (data) profile = data as UserProfile;
   }
 
-  // Still no profile → return null (Google/credentials will create on sign-up)
+  // --------------------------------------------------
+  // Still no profile
+  // --------------------------------------------------
   if (!profile) {
     console.log("⚠ No user profile found in public.users");
     return NextResponse.json({ id: null });
   }
 
+  // --------------------------------------------------
+  // Identity-only payload (NO loyalty fields)
+  // --------------------------------------------------
   const payload = {
     id: profile.id,
     email: profile.email,
     name: profile.name ?? "",
     image: profile.image ?? null,
-    loyaltyprogram: profile.loyaltyprogram ?? false,
-    loyaltypoints: profile.loyaltypoints ?? 0,
     role: profile.role ?? "customer",
     auth_provider: profile.auth_provider ?? "credentials",
   };

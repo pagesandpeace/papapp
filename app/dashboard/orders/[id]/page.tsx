@@ -27,7 +27,6 @@ type StoreOrder = {
 };
 
 export default function StoreOrderReceiptPage() {
-  
   const params = useParams();
   const orderId = params?.id as string | undefined;
 
@@ -45,11 +44,15 @@ export default function StoreOrderReceiptPage() {
         });
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.error || "Failed to load order");
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to load order");
+        }
 
         setOrder(data.order);
-      } catch (e: any) {
-        setErr(e.message || "Failed to load order");
+      } catch (e: unknown) {
+        const message =
+          e instanceof Error ? e.message : "Failed to load order";
+        setErr(message);
       } finally {
         setLoading(false);
       }
@@ -84,7 +87,6 @@ export default function StoreOrderReceiptPage() {
   return (
     <main className="min-h-screen flex items-center justify-center p-6 bg-[#FAF6F1]">
       <div className="w-full max-w-xl rounded-2xl border bg-white p-6 shadow-sm">
-
         <div className="text-sm uppercase tracking-wide opacity-60 mb-1">
           Pages & Peace
         </div>
@@ -114,7 +116,9 @@ export default function StoreOrderReceiptPage() {
                 <p className="text-sm font-medium">
                   {item.productName || "Unknown Product"}
                 </p>
-                <p className="text-xs opacity-70">Qty: {item.quantity}</p>
+                <p className="text-xs opacity-70">
+                  Qty: {item.quantity}
+                </p>
               </div>
 
               <p className="text-sm font-medium">

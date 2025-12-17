@@ -15,6 +15,9 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   const callbackURL = url.searchParams.get("callbackURL") || "/dashboard";
 
+  // 🔑 NEW: detect loyalty intent
+  const joinLoyalty = url.searchParams.get("join") === "loyalty";
+
   if (!code) return NextResponse.redirect(new URL("/", url));
 
   const cookieStore = await cookies();
@@ -34,37 +37,48 @@ export async function GET(request: Request) {
     }
   );
 
+  // --------------------------------------------------
   // Exchange OAuth code → session
-  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+  // --------------------------------------------------
+  const { error: exchangeError } =
+    await supabase.auth.exchangeCodeForSession(code);
+
   if (exchangeError) {
-    console.error("OAuth session exchange failed:", exchangeError);
+    console.error("❌ OAuth session exchange failed:", exchangeError);
     return NextResponse.redirect(new URL("/sign-in", url));
   }
 
   await new Promise((r) => setTimeout(r, 120));
 
-  // Load session user
+  // --------------------------------------------------
+  // Load authenticated user
+  // --------------------------------------------------
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return NextResponse.redirect(new URL("/sign-in", url));
+  if (!user) {
+    console.error("❌ No user after OAuth exchange");
+    return NextResponse.redirect(new URL("/sign-in", url));
+  }
 
+  console.log("👤 OAuth user:", user.id);
+  console.log("🎯 join loyalty intent:", joinLoyalty);
+
+  // --------------------------------------------------
   // Extract Google metadata
+  // --------------------------------------------------
   const meta = (user.user_metadata as GoogleMetadata) || {};
 
   const googleName =
-    meta.full_name ||
-    meta.name ||
-    user.email ||
-    "";
+    meta.full_name || meta.name || user.email || "";
 
   const googleAvatar =
-    meta.avatar_url ||
-    meta.picture ||
-    null;
+    meta.avatar_url || meta.picture || null;
 
-  // Check public.users row
+  // --------------------------------------------------
+  // Ensure public.users row exists
+  // --------------------------------------------------
   const { data: existing } = await supabase
     .from("users")
     .select("*")
@@ -83,11 +97,16 @@ export async function GET(request: Request) {
       auth_provider: "google",
     });
 
-    if (insertErr) console.error("Profile insert error:", insertErr);
+    if (insertErr) {
+      console.error("❌ Profile insert error:", insertErr);
+    } else {
+      console.log("✅ Created public.users profile");
+    }
   } else {
-    // User exists — update auth_provider if needed
     const newProvider =
-      existing.auth_provider === "credentials" ? "both" : existing.auth_provider;
+      existing.auth_provider === "credentials"
+        ? "both"
+        : existing.auth_provider;
 
     if (newProvider !== existing.auth_provider) {
       await supabase
@@ -99,7 +118,34 @@ export async function GET(request: Request) {
     role = existing.role;
   }
 
-  // Admin route
+  // --------------------------------------------------
+  // 🔑 NEW: AUTO OPT-IN TO LOYALTY (IDEMPOTENT)
+  // --------------------------------------------------
+  if (joinLoyalty) {
+    console.log("🌿 Attempting loyalty auto-opt-in");
+
+    const { error: loyaltyError } = await supabase
+      .from("loyalty_members")
+      .insert({
+        user_id: user.id,
+        status: "active",
+        tier: "starter",
+        marketing_consent: false,
+        terms_version: "v1.0",
+      })
+      .select()
+      .maybeSingle();
+
+    if (loyaltyError && loyaltyError.code !== "23505") {
+      console.error("❌ Loyalty auto-opt-in failed:", loyaltyError);
+    } else {
+      console.log("✅ Loyalty member ensured");
+    }
+  }
+
+  // --------------------------------------------------
+  // Redirect
+  // --------------------------------------------------
   if (role === "admin") {
     return NextResponse.redirect(new URL("/admin", url));
   }

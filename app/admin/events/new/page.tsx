@@ -10,6 +10,11 @@ import { Alert } from "@/components/ui/Alert";
 
 import Image from "next/image";
 
+type Store = {
+  id: string;
+  name: string;
+};
+
 export default function CreateEventPage() {
   const router = useRouter();
 
@@ -24,7 +29,8 @@ export default function CreateEventPage() {
   const [price, setPrice] = useState(0);
   const [published, setPublished] = useState(true);
 
-  const [stores, setStores] = useState<any[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+
   const [storeId, setStoreId] = useState("");
 
   const [imageUrl, setImageUrl] = useState("");

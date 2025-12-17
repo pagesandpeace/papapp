@@ -6,6 +6,11 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/hooks/useUser";
 
+type LoyaltyState = {
+  member: boolean;
+  tier?: string;
+};
+
 export default function Sidebar({
   sidebarOpen,
   setSidebarOpen,
@@ -16,8 +21,9 @@ export default function Sidebar({
   handleNav: (href: string) => void;
 }) {
   const router = useRouter();
-  const { user, refresh } = useUser(); // now includes refresh()
+  const { user, refresh } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loyalty, setLoyalty] = useState<LoyaltyState | null>(null);
   const accountRef = useRef<HTMLDivElement | null>(null);
 
   /* -------------------------------------------------------
@@ -29,12 +35,13 @@ export default function Sidebar({
         setMenuOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   /* -------------------------------------------------------
-     🔥 Listen for profile/ avatar updates and refresh sidebar
+     Refresh sidebar on profile updates
   ------------------------------------------------------- */
   useEffect(() => {
     const update = () => refresh();
@@ -51,7 +58,35 @@ export default function Sidebar({
   }, [refresh]);
 
   /* -------------------------------------------------------
-     SIGN OUT
+     Fetch loyalty status (external system)
+  ------------------------------------------------------- */
+  useEffect(() => {
+    if (!user) return; // 👈 no state sync, no cascade
+
+    let mounted = true;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/loyalty/me");
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        if (mounted) {
+          setLoyalty(data);
+        }
+      } catch (err) {
+        console.error("❌ Failed to load loyalty status", err);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  /* -------------------------------------------------------
+     Sign out
   ------------------------------------------------------- */
   const handleSignOut = async () => {
     await fetch("/auth/signout", { method: "POST" });
@@ -61,7 +96,7 @@ export default function Sidebar({
 
   return (
     <>
-      {/* BACKDROP (mobile only) */}
+      {/* BACKDROP (mobile) */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/30 z-40 md:hidden"
@@ -80,7 +115,7 @@ export default function Sidebar({
       >
         {/* TOP SECTION */}
         <div className="px-6 pt-10">
-          {/* MOBILE CLOSE BUTTON */}
+          {/* MOBILE CLOSE */}
           <button
             className="md:hidden absolute right-3 top-3 p-2 hover:bg-black/5 rounded"
             onClick={() => setSidebarOpen(false)}
@@ -101,7 +136,7 @@ export default function Sidebar({
             />
           </button>
 
-          {/* NAVIGATION LINKS */}
+          {/* NAVIGATION */}
           <nav className="mt-6 space-y-4 text-sm text-left">
             <button
               onClick={() => handleNav("/dashboard")}
@@ -150,7 +185,6 @@ export default function Sidebar({
         >
           {user ? (
             <>
-              {/* User button */}
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="flex items-center gap-3 w-full text-left rounded-md px-2 py-2 hover:bg-[#f1ede7]"
@@ -167,10 +201,21 @@ export default function Sidebar({
                   <span className="font-medium text-xs truncate">
                     {user.name || "User"}
                   </span>
+
+                  {loyalty?.member && (
+                    <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-semibold text-[#2f6b3a]">
+                      Chapters Club
+                      {loyalty.tier && (
+                        <span className="opacity-70">
+                          • {loyalty.tier.charAt(0).toUpperCase() + loyalty.tier.slice(1)}
+                        </span>
+                      )}
+                      ✨
+                    </span>
+                  )}
                 </div>
               </button>
 
-              {/* Dropdown */}
               {menuOpen && (
                 <div className="absolute bottom-[110px] left-6 bg-white border rounded-md shadow p-1 w-44 z-50">
                   <button

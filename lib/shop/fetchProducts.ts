@@ -3,7 +3,6 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export const PAGE_SIZE = 12;
 
-// Strong typed params — includes sort
 export type ProductQueryParams = {
   page?: string;
   type?: string;
@@ -19,7 +18,6 @@ export type ProductQueryParams = {
 export async function fetchProducts(params: ProductQueryParams) {
   const supabase = await supabaseServer();
 
-  // 🔥 Fix: force unwrap Proxy/Promise
   const safe = { ...params };
 
   const page = Number(safe.page ?? 1);
@@ -33,7 +31,8 @@ export async function fetchProducts(params: ProductQueryParams) {
   const vibeParam = safe.vibe?.toLowerCase() ?? "";
   const themeParam = safe.theme?.toLowerCase() ?? "";
 
-  const TYPES = ["blind-date", "book", "coffee", "merch", "event", "physical"];
+  // ❌ REMOVED "event"
+  const TYPES = ["blind-date", "book", "coffee", "merch", "physical"];
 
   /* --------------------------------------------------------
      RESOLVE VIBE
@@ -78,12 +77,14 @@ export async function fetchProducts(params: ProductQueryParams) {
     .from("products")
     .select(
       `
-      *,
-      vibe:vibe_id(id, name),
-      theme:theme_id(id, name)
-    `,
+        *,
+        vibe:vibe_id(id, name),
+        theme:theme_id(id, name)
+      `,
       { count: "exact" }
-    );
+    )
+    // 🔒 HARD GUARANTEE: events NEVER appear in shop
+    .neq("product_type", "event");
 
   // Filter by type
   if (type !== "all") {
@@ -92,7 +93,7 @@ export async function fetchProducts(params: ProductQueryParams) {
     query = query.in("product_type", TYPES);
   }
 
-  // Search name
+  // Search
   if (search) {
     query = query.ilike("name", `%${search}%`);
   }
@@ -137,16 +138,8 @@ export async function fetchProducts(params: ProductQueryParams) {
 
   const { data, count, error } = await query;
 
-  // ⭐ UPDATED ERROR HANDLING — exposes the REAL Postgres error
   if (error) {
-    console.error("❌ fetchProducts error:", {
-      message: error.message,
-      code: (error as any).code,
-      details: (error as any).details,
-      hint: (error as any).hint,
-    });
-
-    // IMPORTANT: throw so we see the actual underlying error in terminal
+    console.error("❌ fetchProducts error:", error);
     throw error;
   }
 

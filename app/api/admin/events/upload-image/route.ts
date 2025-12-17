@@ -12,6 +12,10 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET!,
 });
 
+type CloudinaryUploadResult = {
+  secure_url: string;
+};
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -24,38 +28,30 @@ export async function POST(req: Request) {
       );
     }
 
-    // Convert file -> base64 buffer
+    // Convert file -> buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Upload to Cloudinary folder
-    const upload = await cloudinary.uploader.upload_stream(
-      {
-        folder: "pagesandpeace/events",
-        resource_type: "image",
-      },
-      (error, result) => {
-        if (error || !result) {
-          console.error("Cloudinary error:", error);
-          return;
-        }
+    // Upload to Cloudinary (wrap callback API in Promise)
+    const result = await new Promise<CloudinaryUploadResult>(
+      (resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "pagesandpeace/events",
+            resource_type: "image",
+          },
+          (error, result) => {
+            if (error || !result) {
+              reject(error);
+            } else {
+              resolve({ secure_url: result.secure_url });
+            }
+          }
+        );
+
+        stream.end(buffer);
       }
     );
-
-    // We need to return a Promise because upload_stream is callback-based
-    const result: any = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: "pagesandpeace/events",
-          resource_type: "image",
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-      stream.end(buffer);
-    });
 
     return NextResponse.json({ url: result.secure_url });
   } catch (err) {

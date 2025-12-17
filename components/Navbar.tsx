@@ -84,35 +84,54 @@ export default function Navbar() {
       </nav>
 
       {/* MOBILE MENU */}
-      {open && (
-        <>
-          <button className="fixed inset-0 bg-black/30 md:hidden" onClick={closeMenu} />
+{open && (
+  <>
+    {/* BACKDROP */}
+    <button
+      className="fixed inset-0 bg-black/30 z-40 md:hidden"
+      onClick={closeMenu}
+      aria-label="Close menu"
+    />
 
-          <div className="bg-[var(--accent)] rounded-b-xl shadow-lg md:hidden p-4">
-            <ul className="space-y-1">
-              {NAV_LINKS.map((l) => (
-                <li key={l.href}>
-                  <Link onClick={closeMenu} href={l.href} className="block px-3 py-2">
-                    {l.label}
-                  </Link>
-                </li>
-              ))}
+    {/* MENU PANEL */}
+    <div className="relative z-50 bg-[var(--accent)] rounded-b-xl shadow-lg md:hidden p-4">
+      <ul className="space-y-1">
+        {NAV_LINKS.map((l) => (
+          <li key={l.href}>
+            <Link
+              href={l.href}
+              onClick={closeMenu}
+              className="block px-3 py-2"
+            >
+              {l.label}
+            </Link>
+          </li>
+        ))}
 
-              {!loading && (
-                user ? (
-                  <Link onClick={closeMenu} href="/dashboard" className="block px-3 py-2">
-                    My Account
-                  </Link>
-                ) : (
-                  <Link onClick={closeMenu} href="/sign-in" className="block px-3 py-2">
-                    Sign In
-                  </Link>
-                )
-              )}
-            </ul>
-          </div>
-        </>
-      )}
+        {!loading && (
+          user ? (
+            <Link
+              href="/dashboard"
+              onClick={closeMenu}
+              className="block px-3 py-2"
+            >
+              My Account
+            </Link>
+          ) : (
+            <Link
+              href="/sign-in"
+              onClick={closeMenu}
+              className="block px-3 py-2"
+            >
+              Sign In
+            </Link>
+          )
+        )}
+      </ul>
+    </div>
+  </>
+)}
+
     </header>
   );
 }

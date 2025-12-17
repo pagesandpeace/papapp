@@ -14,6 +14,12 @@ export const revalidate = 0;
 
 type ChartPoint = { month: string; value: number };
 
+type MetricRow = {
+  month: string;
+  shop_revenue: number;
+  event_revenue: number;
+};
+
 export default async function AdminDashboardPage() {
   const supabase = await supabaseServer();
 
@@ -30,24 +36,22 @@ export default async function AdminDashboardPage() {
   if (profile?.role !== "admin") redirect("/dashboard");
 
   // RPC CALL
-  const { data: rpc, error: rpcErr } = await supabase.rpc(
+  const { data: rpc } = await supabase.rpc(
     "get_admin_dashboard_metrics"
   );
 
-  // FIX: read values directly from rpc — NOT payload
+  // READ VALUES DIRECTLY FROM RPC
   const totals = rpc?.totals ?? {};
-  const metrics = rpc?.metrics ?? [];
+  const metrics: MetricRow[] = rpc?.metrics ?? [];
   const lowStock = rpc?.low_stock_products ?? [];
 
-  const DEBUG = { rpc, totals, metrics };
-
   // CHART DATA
-  const shopRevenueData: ChartPoint[] = metrics.map((m: any) => ({
+  const shopRevenueData: ChartPoint[] = metrics.map((m) => ({
     month: m.month,
     value: m.shop_revenue,
   }));
 
-  const eventRevenueData: ChartPoint[] = metrics.map((m: any) => ({
+  const eventRevenueData: ChartPoint[] = metrics.map((m) => ({
     month: m.month,
     value: m.event_revenue,
   }));
@@ -61,9 +65,13 @@ export default async function AdminDashboardPage() {
   const totalSignups = totals.total_signups ?? 0;
 
   // FEEDBACK
-  const { data: feedback } = await supabase.from("feedback").select("rating");
+  const { data: feedbackData } = await supabase
+    .from("feedback")
+    .select("rating");
 
-  const totalFeedback = feedback?.length ?? 0;
+  const feedback = feedbackData ?? [];
+  const totalFeedback = feedback.length;
+
   const averageRating =
     totalFeedback > 0
       ? feedback.reduce((sum, f) => sum + f.rating, 0) / totalFeedback
@@ -79,8 +87,6 @@ export default async function AdminDashboardPage() {
   return (
     <div className="space-y-10 max-w-6xl mx-auto py-10">
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
-
-    
 
       <DashboardKpiCards
         totalRevenue={totalRevenue}

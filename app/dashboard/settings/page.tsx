@@ -1,19 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useUser } from "@/hooks/useUser";
 
 export default function SettingsPage() {
   const { user } = useUser();
 
-  // For now: store email notifications locally until backend feature exists
-  const [notifications, setNotifications] = useState<boolean>(true);
-
-  useEffect(() => {
+  // Initialize from localStorage (client-safe)
+  const [notifications, setNotifications] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
     const stored = localStorage.getItem("pp:notifications");
-    if (stored !== null) setNotifications(stored === "true");
-  }, []);
+    return stored !== null ? stored === "true" : true;
+  });
 
   const toggleNotifications = () => {
     const next = !notifications;
@@ -33,7 +32,9 @@ export default function SettingsPage() {
 
         {/* HEADER */}
         <header className="border-b border-[#dcd6cf] pb-6">
-          <h1 className="text-3xl font-semibold tracking-widest">Settings ⚙️</h1>
+          <h1 className="text-3xl font-semibold tracking-widest">
+            Settings ⚙️
+          </h1>
           <p className="text-[#111]/70 mt-1">
             Manage your basic account preferences.
           </p>
@@ -56,7 +57,9 @@ export default function SettingsPage() {
               </Link>
             </div>
           ) : (
-            <p className="text-sm text-gray-600">You are not signed in.</p>
+            <p className="text-sm text-gray-600">
+              You are not signed in.
+            </p>
           )}
         </div>
 
@@ -65,7 +68,9 @@ export default function SettingsPage() {
           <h2 className="text-lg font-semibold">Preferences</h2>
 
           <div className="flex items-center justify-between py-2">
-            <span className="text-[#111]/80 font-medium">Email Notifications</span>
+            <span className="text-[#111]/80 font-medium">
+              Email Notifications
+            </span>
 
             <label className="inline-flex items-center cursor-pointer">
               <input

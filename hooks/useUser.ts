@@ -7,8 +7,6 @@ export type UserSession = {
   email?: string;
   name?: string;
   image?: string | null;
-  loyaltyprogram?: boolean;
-  loyaltypoints?: number;
   role?: string;
 };
 
@@ -17,7 +15,7 @@ export function useUser() {
   const [loading, setLoading] = useState(true);
 
   // ------------------------------------------------------
-  // REFRESH USER MANUALLY (sidebar + account page call this)
+  // REFRESH USER MANUALLY
   // ------------------------------------------------------
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -26,8 +24,17 @@ export function useUser() {
       const res = await fetch("/api/me", { cache: "no-store" });
       const data = await res.json();
 
-      if (data?.id) setUser(data);
-      else setUser(null);
+      if (data?.id) {
+        setUser({
+          id: data.id,
+          email: data.email,
+          name: data.name,
+          image: data.image,
+          role: data.role,
+        });
+      } else {
+        setUser(null);
+      }
     } catch (err) {
       console.error("❌ Failed refreshing user:", err);
       setUser(null);
@@ -37,12 +44,10 @@ export function useUser() {
   }, []);
 
   // ------------------------------------------------------
-  // LOAD USER ON MOUNT (deferred to avoid ESLint violation)
+  // LOAD USER ON MOUNT
   // ------------------------------------------------------
   useEffect(() => {
-    queueMicrotask(() => {
-      refresh();
-    });
+    queueMicrotask(refresh);
   }, [refresh]);
 
   // ------------------------------------------------------

@@ -2,7 +2,25 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function Pagination({ page, total, pageSize }: any) {
+/* ------------------------------------------
+   TYPES
+------------------------------------------ */
+
+type PaginationProps = {
+  page: number;
+  total: number;
+  pageSize: number;
+};
+
+/* ------------------------------------------
+   COMPONENT
+------------------------------------------ */
+
+export default function Pagination({
+  page,
+  total,
+  pageSize,
+}: PaginationProps) {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -19,7 +37,10 @@ export default function Pagination({ page, total, pageSize }: any) {
   return (
     <div className="flex gap-3 justify-center mt-10">
       {page > 1 && (
-        <button onClick={() => go(page - 1)} className="px-4 py-2 border rounded">
+        <button
+          onClick={() => go(page - 1)}
+          className="px-4 py-2 border rounded"
+        >
           Prev
         </button>
       )}
@@ -29,7 +50,10 @@ export default function Pagination({ page, total, pageSize }: any) {
       </span>
 
       {page < totalPages && (
-        <button onClick={() => go(page + 1)} className="px-4 py-2 border rounded">
+        <button
+          onClick={() => go(page + 1)}
+          className="px-4 py-2 border rounded"
+        >
           Next
         </button>
       )}

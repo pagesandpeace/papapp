@@ -3,7 +3,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 
-export default async function AdminProductDetailPage({ params }: any) {
+type PageProps = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
+export default async function AdminProductDetailPage({ params }: PageProps) {
   const { id } = await params;
 
   const supabase = await supabaseServer();
@@ -18,7 +24,7 @@ export default async function AdminProductDetailPage({ params }: any) {
       theme:themes(name)
     `)
     .eq("id", id)
-    .neq("product_type", "event")   // 🚫 never load event products here
+    .neq("product_type", "event") // 🚫 never load event products here
     .single();
 
   // If not found or is event, show safe fallback
@@ -128,7 +134,9 @@ export default async function AdminProductDetailPage({ params }: any) {
           <p className="text-xl font-semibold text-[#2f6b3a]">
             £{Number(product.price).toFixed(2)}
           </p>
-          <p className="text-sm text-neutral-500 mt-1">Visible to customers</p>
+          <p className="text-sm text-neutral-500 mt-1">
+            Visible to customers
+          </p>
         </div>
       </div>
 
@@ -143,8 +151,14 @@ export default async function AdminProductDetailPage({ params }: any) {
       {/* METADATA */}
       <div className="p-6 rounded-lg border bg-white shadow-sm opacity-80">
         <h3 className="text-lg font-semibold mb-2">Metadata</h3>
-        <p><strong>Created:</strong> {new Date(product.created_at).toLocaleString("en-GB")}</p>
-        <p><strong>Updated:</strong> {new Date(product.updated_at).toLocaleString("en-GB")}</p>
+        <p>
+          <strong>Created:</strong>{" "}
+          {new Date(product.created_at).toLocaleString("en-GB")}
+        </p>
+        <p>
+          <strong>Updated:</strong>{" "}
+          {new Date(product.updated_at).toLocaleString("en-GB")}
+        </p>
         <p><strong>ID:</strong> {product.id}</p>
       </div>
     </main>

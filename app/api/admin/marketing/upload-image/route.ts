@@ -9,6 +9,10 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET!,
 });
 
+type CloudinaryUploadResult = {
+  secure_url: string;
+};
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -25,21 +29,26 @@ export async function POST(req: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // 🚀 EXACT SAME WORKING PATTERN AS YOUR EVENT UPLOADER
-    const result: any = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: "pagesandpeace/marketing/hero",
-          resource_type: "image",
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
+    // 🚀 SAME WORKING PATTERN — JUST TYPED
+    const result = await new Promise<CloudinaryUploadResult>(
+      (resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "pagesandpeace/marketing/hero",
+            resource_type: "image",
+          },
+          (error, result) => {
+            if (error || !result) {
+              reject(error);
+            } else {
+              resolve({ secure_url: result.secure_url });
+            }
+          }
+        );
 
-      stream.end(buffer);
-    });
+        stream.end(buffer);
+      }
+    );
 
     return NextResponse.json({ url: result.secure_url });
   } catch (err) {

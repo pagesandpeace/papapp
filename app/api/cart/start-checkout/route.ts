@@ -5,9 +5,15 @@ import { supabaseServer } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: "2022-11-15",
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+
+type CartItem = {
+  productId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  imageUrl?: string;
+};
 
 export async function POST(req: Request) {
   try {
@@ -20,7 +26,7 @@ export async function POST(req: Request) {
     }
 
     // Parse cart items
-    const { items } = await req.json();
+    const { items }: { items: CartItem[] } = await req.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -30,11 +36,11 @@ export async function POST(req: Request) {
     }
 
     // Build Stripe line items
-    const line_items = items.map((item: any) => ({
+    const line_items = items.map((item) => ({
       quantity: item.quantity,
       price_data: {
         currency: "gbp",
-        unit_amount: Math.round(item.price * 100), // convert £ → pence
+        unit_amount: Math.round(item.price * 100), // £ → pence
         product_data: {
           name: item.name,
           images: item.imageUrl ? [item.imageUrl] : [],
@@ -67,10 +73,14 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("❌ CART CHECKOUT ERROR:", err);
+
+    const message =
+      err instanceof Error ? err.message : "UNKNOWN_ERROR";
+
     return NextResponse.json(
-      { error: err.message ?? "UNKNOWN_ERROR" },
+      { error: message },
       { status: 500 }
     );
   }
