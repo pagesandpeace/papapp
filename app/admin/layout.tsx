@@ -3,14 +3,20 @@ import "@/app/globals.css";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
+import { unstable_noStore as noStore } from "next/cache";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // 🔴 CRITICAL: breaks App Router caching for auth + RPCs
+  noStore();
+
   const supabase = await supabaseServer();
 
   // 1) Get auth user
@@ -24,7 +30,6 @@ export default async function AdminLayout({
   }
 
   if (!user) {
-    // Not logged in → send to sign in, then bounce back
     redirect("/sign-in?callbackURL=/admin");
   }
 
@@ -33,7 +38,7 @@ export default async function AdminLayout({
     .from("users")
     .select("role")
     .eq("id", user.id)
-    .maybeSingle();
+    .single();
 
   if (profileErr) {
     console.error("❌ [admin layout] profile error:", profileErr);

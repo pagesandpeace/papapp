@@ -12,14 +12,10 @@ import {
 
 type ChartPoint = {
   month: string;
-  value: number;
+  value: number;  // Using value as the generic key for both chart types
 };
 
-export default function ShopRevenueChart({
-  data,
-}: {
-  data: ChartPoint[];
-}) {
+export default function ShopRevenueChart({ data }: { data: ChartPoint[] }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={data}>
@@ -29,7 +25,7 @@ export default function ShopRevenueChart({
         <Tooltip />
         <Line
           type="monotone"
-          dataKey="value"
+          dataKey="value"  // Updated to match the data key
           stroke="#5DA865"
           strokeWidth={3}
         />

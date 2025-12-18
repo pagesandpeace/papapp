@@ -10,9 +10,10 @@ import {
   Tooltip,
 } from "recharts";
 
+// ChartPoint type for the data structure
 type ChartPoint = {
   month: string;
-  value: number;
+  value: number;  // Using value as the generic key for both chart types
 };
 
 export default function EventRevenueChart({
@@ -29,7 +30,7 @@ export default function EventRevenueChart({
         <Tooltip />
         <Line
           type="monotone"
-          dataKey="value"
+          dataKey="value"  // Updated to match the data key
           stroke="#111"
           strokeWidth={3}
         />

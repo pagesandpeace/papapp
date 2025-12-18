@@ -239,67 +239,71 @@ export async function POST(req: Request) {
   }
 
   /* =====================================================
-     EVENT FLOW (FINAL, CORRECT)
-  ===================================================== */
-  if (md.kind === "event") {
-    const quantity = Math.max(1, Number(md.quantity ?? 1));
+   EVENT FLOW (FINAL, CORRECT)
+===================================================== */
+if (md.kind === "event") {
+  const quantity = Math.max(1, Number(md.quantity ?? 1));
 
-    const { data: event } = await supabase
-      .from("events")
-      .select("title")
-      .eq("id", md.eventId)
-      .single();
+  const { data: event } = await supabase
+    .from("events")
+    .select("title")
+    .eq("id", md.eventId)
+    .single();
 
-    if (!event) {
-      return NextResponse.json({ received: true });
-    }
-
-    await supabase.from("orders").insert({
-      id: orderId,
-      user_id: md.userId,
-      email: customerEmail,
-      total,
-      status: "completed",
-      stripe_checkout_session_id: session.id,
-      stripe_payment_intent_id: paymentIntentId,
-    });
-
-    if (paymentIntentId) {
-      const details = await getPaymentDetails(paymentIntentId);
-      await supabase.from("orders").update(details).eq("id", orderId);
-    }
-
-    await supabase.from("order_items").insert({
-      id: crypto.randomUUID(),
-      order_id: orderId,
-      event_id: md.eventId,
-      kind: "event",
-      quantity,
-      price: total / quantity,
-      name: event.title,
-    });
-
-    const { data: existingSeats } = await supabase
-      .from("event_bookings")
-      .select("id")
-      .eq("stripe_checkout_session_id", session.id)
-      .limit(1);
-
-    if (!existingSeats || existingSeats.length === 0) {
-      const seats = Array.from({ length: quantity }, (_, i) => ({
-        user_id: md.userId,
-        event_id: md.eventId,
-        stripe_checkout_session_id: session.id,
-        cancelled: false,
-        name: i === 0 ? null : `Guest ${i + 1}`,
-      }));
-
-      await supabase.from("event_bookings").insert(seats);
-    }
-
-    await sendOrderConfirmationEmail(orderId);
+  if (!event) {
     return NextResponse.json({ received: true });
   }
+
+  await supabase.from("orders").insert({
+    id: orderId,
+    user_id: md.userId,
+    email: customerEmail,
+    total,
+    status: "completed",
+    stripe_checkout_session_id: session.id,
+    stripe_payment_intent_id: paymentIntentId,
+  });
+
+  if (paymentIntentId) {
+    const details = await getPaymentDetails(paymentIntentId);
+    await supabase.from("orders").update(details).eq("id", orderId);
+  }
+
+  await supabase.from("order_items").insert({
+    id: crypto.randomUUID(),
+    order_id: orderId,
+    event_id: md.eventId,
+    kind: "event",
+    quantity,
+    price: total / quantity,
+    name: event.title,
+  });
+
+  // Check if there are existing event bookings for the user and event
+  const { data: existingSeats } = await supabase
+    .from("event_bookings")
+    .select("id")
+    .eq("user_id", md.userId)
+    .eq("event_id", md.eventId)
+    .eq("stripe_checkout_session_id", session.id)
+    .limit(1);
+
+  if (!existingSeats || existingSeats.length === 0) {
+    const seats = Array.from({ length: quantity }, (_, i) => ({
+      user_id: md.userId,
+      event_id: md.eventId,
+      stripe_checkout_session_id: session.id,
+      cancelled: false,
+      name: i === 0 ? null : `Guest ${i + 1}`, // Ensure guest names are inserted
+    }));
+
+    await supabase.from("event_bookings").insert(seats);
+  }
+
+  await sendOrderConfirmationEmail(orderId);
+  return NextResponse.json({ received: true });
+}
+
 
   return NextResponse.json({ received: true });
 }
