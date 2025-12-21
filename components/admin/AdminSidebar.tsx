@@ -80,6 +80,9 @@ export default function AdminSidebar() {
           <button onClick={() => handleNav("/admin/products/new")} className="text-left hover:text-[#5DA865]">
             Add Product
           </button>
+          <button onClick={() => handleNav("/admin/orders")} className="text-left hover:text-[#5DA865]">
+            View orders
+          </button>
 
           {/* MARKETING SECTION */}
           <div className="pt-3 border-t border-[#dcd6cf]">

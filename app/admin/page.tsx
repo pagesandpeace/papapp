@@ -10,6 +10,7 @@ import CollapsibleSection from "@/components/admin/dashboard/CollapsibleSection"
 import ChartWrapper from "@/components/admin/dashboard/ChartWrapper";
 import ShopRevenueChart from "@/components/admin/dashboard/ShopRevenueChart";
 import EventRevenueChart from "@/components/admin/dashboard/EventRevenueChart";
+import RefundRevenueChart from "@/components/admin/dashboard/RefundRevenueChart";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,13 +28,13 @@ type MetricRow = {
   month: string;
   shop_revenue: number;
   event_revenue: number;
+  refunded_revenue?: number;
 };
 
 /* ------------------------------------------------------------------
    PAGE
 ------------------------------------------------------------------ */
 export default async function AdminDashboardPage() {
-  // 🔴 Disable all caching (auth + RPC + cookies)
   noStore();
 
   const supabase = await supabaseServer();
@@ -49,15 +50,11 @@ export default async function AdminDashboardPage() {
     redirect("/sign-in?callbackURL=/admin");
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile } = await supabase
     .from("users")
     .select("role")
     .eq("id", user.id)
     .single();
-
-  if (profileError) {
-    console.error("❌ Failed to load user profile:", profileError);
-  }
 
   if (profile?.role !== "admin") {
     redirect("/dashboard");
@@ -91,12 +88,24 @@ export default async function AdminDashboardPage() {
     value: m.event_revenue,
   }));
 
+  const refundRevenueData: ChartPoint[] = metrics.map((m) => ({
+    month: m.month,
+    value: m.refunded_revenue ?? 0,
+  }));
+
   /* ------------------------------------------------------------------
-     KPI DATA (MATCHES RPC KEYS EXACTLY)
+     KPI DATA
   ------------------------------------------------------------------ */
   const totalRevenue = totals.total_revenue ?? 0;
+  const netRevenue = totals.net_revenue ?? 0;
+  const refundedRevenue = totals.refunded_revenue ?? 0;
+
+  const refundRate =
+    totalRevenue > 0 ? refundedRevenue / totalRevenue : 0;
+
   const shopRevenue = totals.shop_revenue ?? 0;
   const eventRevenue = totals.event_revenue ?? 0;
+
   const totalEvents = totals.total_events ?? 0;
   const totalBookings = totals.event_bookings ?? 0;
   const totalSignups = totals.total_signups ?? 0;
@@ -126,12 +135,6 @@ export default async function AdminDashboardPage() {
   const totalEmailSubscribers = subs?.length ?? 0;
 
   /* ------------------------------------------------------------------
-     DEBUG (safe to remove later)
-  ------------------------------------------------------------------ */
-  console.log("ADMIN DASHBOARD RENDER", new Date().toISOString());
-  console.log("ADMIN TOTALS", totals);
-
-  /* ------------------------------------------------------------------
      RENDER
   ------------------------------------------------------------------ */
   return (
@@ -140,6 +143,9 @@ export default async function AdminDashboardPage() {
 
       <DashboardKpiCards
         totalRevenue={totalRevenue}
+        netRevenue={netRevenue}
+        refundedRevenue={refundedRevenue}
+        refundRate={refundRate}
         shopRevenue={shopRevenue}
         eventRevenue={eventRevenue}
         totalEvents={totalEvents}
@@ -152,17 +158,21 @@ export default async function AdminDashboardPage() {
 
       <LowStockWidget items={lowStock} />
 
-      {/* SHOP REVENUE */}
       <CollapsibleSection title="Shop Revenue">
         <ChartWrapper>
           <ShopRevenueChart data={shopRevenueData} />
         </ChartWrapper>
       </CollapsibleSection>
 
-      {/* EVENT REVENUE */}
       <CollapsibleSection title="Event Revenue">
         <ChartWrapper>
           <EventRevenueChart data={eventRevenueData} />
+        </ChartWrapper>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Refunded Revenue">
+        <ChartWrapper>
+          <RefundRevenueChart data={refundRevenueData} />
         </ChartWrapper>
       </CollapsibleSection>
     </div>

@@ -28,7 +28,7 @@ export default async function BookingDetailPage({
     "You (booker)";
 
   /* -----------------------------
-     LOAD ORDER (HARD REQUIREMENT)
+     LOAD ORDER
   ----------------------------- */
   const { data: order } = await supabase
     .from("orders")
@@ -39,7 +39,7 @@ export default async function BookingDetailPage({
   if (!order) notFound();
 
   /* -----------------------------
-     LOAD EVENT ID (SAFE, MINIMAL)
+     LOAD EVENT ITEM
   ----------------------------- */
   const { data: orderItems } = await supabase
     .from("order_items")
@@ -63,13 +63,13 @@ export default async function BookingDetailPage({
   if (!baseEvent || !eventItem) notFound();
 
   /* -----------------------------
-     LOAD FULL EVENT DATA (BULLETPROOF)
+     LOAD FULL EVENT (SAFE)
   ----------------------------- */
   const { data: fullEvent } = await supabase
     .from("events")
-    .select(`
+    .select(
+      `
       id,
-      product_id,
       title,
       subtitle,
       short_description,
@@ -78,28 +78,32 @@ export default async function BookingDetailPage({
       capacity,
       price_pence,
       image_url,
-      store_id,
-      published,
-      slug,
-      created_at,
-      updated_at
-    `)
+      published
+    `
+    )
     .eq("id", baseEvent.id)
     .single();
 
-  // If for ANY reason this fails, we still show the booking
   const event = fullEvent ?? baseEvent;
 
   /* -----------------------------
-     LOAD SEATS (REQUIRED)
+     LOAD SEATS (SOURCE OF TRUTH)
   ----------------------------- */
   const { data: seats } = await supabase
     .from("event_bookings")
-    .select(`id, name`)
+    .select(`id, name, refunded, cancelled`)
     .eq("stripe_checkout_session_id", order.stripe_checkout_session_id)
     .order("created_at", { ascending: true });
 
   if (!seats || seats.length === 0) notFound();
+
+  /* -----------------------------
+     DERIVED COUNTS
+  ----------------------------- */
+  const totalTickets = eventItem.quantity;
+  const activeTickets = seats.filter(
+    (s) => !s.refunded && !s.cancelled
+  ).length;
 
   /* -----------------------------
      UI
@@ -141,9 +145,18 @@ export default async function BookingDetailPage({
             )}
           </div>
 
+          {/* 🔴 UPDATED TICKET STATUS BADGE */}
           <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-sm">
-            🎟️ {eventItem.quantity} tickets booked
-          </div>
+  🎟️{" "}
+  {activeTickets === 0
+    ? "All tickets refunded"
+    : activeTickets === totalTickets
+    ? `${totalTickets} ${totalTickets === 1 ? "ticket" : "tickets"} booked`
+    : `${activeTickets} of ${totalTickets} ${
+        totalTickets === 1 ? "ticket" : "tickets"
+      } active`}
+</div>
+
         </div>
       </section>
 
@@ -177,15 +190,17 @@ export default async function BookingDetailPage({
               ? bookerName
               : seat.name || "Guest";
 
+            const refunded = seat.refunded || seat.cancelled;
+
             return (
               <div
                 key={seat.id}
-                className="relative overflow-hidden rounded-xl border bg-white p-5 shadow-sm"
+                className={`relative overflow-hidden rounded-xl border p-5 shadow-sm ${
+                  refunded
+                    ? "bg-neutral-100 opacity-60"
+                    : "bg-white"
+                }`}
               >
-                {/* ticket notch */}
-                <div className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#FAF6F1]" />
-                <div className="absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#FAF6F1]" />
-
                 <div className="flex items-center gap-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-200 text-lg">
                     🎟️
@@ -197,6 +212,9 @@ export default async function BookingDetailPage({
                       {isBooker && " • Booker"}
                     </p>
                     <p className="font-medium">{displayName}</p>
+                    <p className="text-xs mt-1">
+                      {refunded ? "Refunded" : "Active"}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -209,7 +227,10 @@ export default async function BookingDetailPage({
       <section className="rounded-xl border bg-white p-6 text-sm text-neutral-700 shadow-sm">
         <h3 className="mb-2 font-medium">Payment summary</h3>
         <p><strong>Total paid:</strong> £{order.total}</p>
-        <p><strong>Status:</strong> {order.status}</p>
+        <p>
+          <strong>Status:</strong>{" "}
+          <span className="capitalize">{order.status}</span>
+        </p>
       </section>
 
     </main>

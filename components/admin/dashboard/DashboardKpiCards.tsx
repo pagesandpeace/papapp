@@ -2,45 +2,80 @@
 
 import { Card, CardHeader, CardBody } from "@/components/ui/Card";
 
+/* --------------------------------------------------
+   PROPS (ALIGNED WITH ADMIN PAGE)
+-------------------------------------------------- */
 type Props = {
-  totalRevenue?: number;
-  shopRevenue?: number;
-  eventRevenue?: number;
-  totalEvents?: number;
-  totalBookings?: number;
-  totalSignups?: number;
-  totalFeedback?: number;
-  averageRating?: number;
-  totalEmailSubscribers?: number;
+  totalRevenue: number;
+  netRevenue: number;
+  refundedRevenue: number;
+  refundRate: number;
+
+  shopRevenue: number;
+  eventRevenue: number;
+
+  totalEvents: number;
+  totalBookings: number;
+  totalSignups: number;
+
+  totalFeedback: number;
+  averageRating: number;
+  totalEmailSubscribers: number;
 };
 
 export default function DashboardKpiCards({
   totalRevenue = 0,
+  netRevenue = 0,
+  refundedRevenue = 0,
+  refundRate = 0,
+
   shopRevenue = 0,
   eventRevenue = 0,
+
   totalEvents = 0,
   totalBookings = 0,
   totalSignups = 0,
+
   totalFeedback = 0,
   averageRating = 0,
   totalEmailSubscribers = 0,
 }: Props) {
   const cards = [
+    /* ---------------- Revenue ---------------- */
     {
-      label: "Total Revenue",
+      label: "Gross Revenue",
       value: `£${Number(totalRevenue).toFixed(2)}`,
       color: "text-green-700",
     },
     {
+      label: "Net Revenue",
+      value: `£${Number(netRevenue).toFixed(2)}`,
+      color: "text-emerald-700",
+    },
+    {
+      label: "Refunded",
+      value: `£${Number(refundedRevenue).toFixed(2)}`,
+      color: "text-red-600",
+    },
+    {
+      label: "Refund Rate",
+      value: `${(refundRate * 100).toFixed(1)}%`,
+      color: "text-red-500",
+    },
+
+    /* ---------------- Breakdown ---------------- */
+    {
       label: "Shop Revenue",
       value: `£${Number(shopRevenue).toFixed(2)}`,
-      color: "text-emerald-700",
+      color: "text-indigo-700",
     },
     {
       label: "Event Revenue",
       value: `£${Number(eventRevenue).toFixed(2)}`,
-      color: "text-indigo-700",
+      color: "text-purple-700",
     },
+
+    /* ---------------- Activity ---------------- */
     {
       label: "Total Events",
       value: totalEvents,
@@ -49,13 +84,15 @@ export default function DashboardKpiCards({
     {
       label: "Total Bookings",
       value: totalBookings,
-      color: "text-purple-700",
+      color: "text-violet-700",
     },
     {
       label: "Total Signups",
       value: totalSignups,
       color: "text-amber-700",
     },
+
+    /* ---------------- Quality ---------------- */
     {
       label: "Feedback Count",
       value: totalFeedback,
@@ -64,7 +101,7 @@ export default function DashboardKpiCards({
     {
       label: "Average Rating",
       value: Number.isFinite(averageRating)
-        ? `${Number(averageRating).toFixed(1)} / 5`
+        ? `${averageRating.toFixed(1)} / 5`
         : "N/A",
       color: "text-lime-700",
     },
@@ -76,7 +113,7 @@ export default function DashboardKpiCards({
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-9 gap-6">
+    <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6">
       {cards.map((item) => (
         <Card key={item.label} className="shadow-sm">
           <CardHeader>

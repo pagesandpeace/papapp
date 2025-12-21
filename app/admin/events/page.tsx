@@ -12,7 +12,9 @@ export const revalidate = 0;
 export default async function AdminEventsPage() {
   const supabase = await supabaseServer();
 
-  // AUTH
+  /* --------------------------------------------------
+     AUTH
+  -------------------------------------------------- */
   const { data: auth } = await supabase.auth.getUser();
   if (!auth?.user) redirect("/sign-in?callbackURL=/admin/events");
 
@@ -24,26 +26,59 @@ export default async function AdminEventsPage() {
 
   if (profile?.role !== "admin") redirect("/dashboard");
 
-  // FETCH EVENTS
-  const { data: events } = await supabase
+  /* --------------------------------------------------
+     FETCH EVENTS + BOOKINGS
+  -------------------------------------------------- */
+  const { data: events, error } = await supabase
     .from("events")
-    .select("*")
+    .select(`
+      id,
+      title,
+      subtitle,
+      slug,
+      date,
+      price_pence,
+      image_url,
+      capacity,
+      published,
+      event_bookings (
+        id,
+        cancelled
+      )
+    `)
     .order("date", { ascending: true });
 
+  if (error) {
+    console.error("EVENT FETCH ERROR:", error);
+  }
+
+  /* --------------------------------------------------
+     NORMALISE (ATTENDEE COUNT)
+  -------------------------------------------------- */
+  const normalisedEvents =
+    events?.map((e) => ({
+      ...e,
+      // keep event_bookings array for your existing UI
+      event_bookings:
+        e.event_bookings?.filter((b) => !b.cancelled) ?? [],
+    })) ?? [];
+
+  /* --------------------------------------------------
+     RENDER
+  -------------------------------------------------- */
   return (
     <div className="space-y-10 max-w-6xl mx-auto py-10">
-      {/* Header row */}
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Events</h1>
 
-        {/* Create Event button */}
         <Link href="/admin/events/new">
           <Button variant="primary">+ Create Event</Button>
         </Link>
       </div>
 
-      {/* Tabs + cards grid */}
-      <EventsTabs events={events ?? []} />
+      {/* Tabs + cards */}
+      <EventsTabs events={normalisedEvents} />
     </div>
   );
 }

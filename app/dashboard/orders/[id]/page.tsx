@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import NeedRefundHelp from "@/components/NeedRefundHelp";
 
+/* ---------------------------------------------
+   TYPES
+--------------------------------------------- */
 type OrderItem = {
   productName: string | null;
   quantity: number;
@@ -24,11 +28,18 @@ type StoreOrder = {
   stripe_card_brand?: string | null;
   stripe_last4?: string | null;
   paid_at?: string | null;
+
+  refunded_amount?: number | null;
+  stripe_refund_id?: string | null;
+  refund_processed_at?: string | null;
 };
 
+/* ---------------------------------------------
+   PAGE
+--------------------------------------------- */
 export default function StoreOrderReceiptPage() {
-  const params = useParams();
-  const orderId = params?.id as string | undefined;
+  const params = useParams<{ id: string }>();
+  const orderId = params?.id;
 
   const [order, setOrder] = useState<StoreOrder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,6 +53,7 @@ export default function StoreOrderReceiptPage() {
         const res = await fetch(`/api/orders/get?id=${orderId}`, {
           cache: "no-store",
         });
+
         const data = await res.json();
 
         if (!res.ok) {
@@ -61,6 +73,9 @@ export default function StoreOrderReceiptPage() {
     load();
   }, [orderId]);
 
+  /* ---------------------------------------------
+     STATES
+  --------------------------------------------- */
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
@@ -84,6 +99,16 @@ export default function StoreOrderReceiptPage() {
     );
   }
 
+  const refundMessage =
+    order.status === "refunded"
+      ? "This order has been fully refunded"
+      : order.status === "partially_refunded"
+      ? "This order has been partially refunded"
+      : null;
+
+  /* ---------------------------------------------
+     RENDER
+  --------------------------------------------- */
   return (
     <main className="min-h-screen flex items-center justify-center p-6 bg-[#FAF6F1]">
       <div className="w-full max-w-xl rounded-2xl border bg-white p-6 shadow-sm">
@@ -99,9 +124,19 @@ export default function StoreOrderReceiptPage() {
         </p>
 
         <p className="mt-1 text-sm">
-          Status:{" "}
-          <strong className="capitalize">{order.status}</strong>
+          Status: <strong className="capitalize">{order.status}</strong>
         </p>
+
+        {/* REFUND BANNER */}
+        {refundMessage && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-medium">{refundMessage}</p>
+            <p className="mt-1">
+              Any refunded amount has been returned to the original payment
+              method.
+            </p>
+          </div>
+        )}
 
         {/* ITEMS */}
         <div className="mt-6 rounded-xl border p-4 bg-white">
@@ -116,9 +151,7 @@ export default function StoreOrderReceiptPage() {
                 <p className="text-sm font-medium">
                   {item.productName || "Unknown Product"}
                 </p>
-                <p className="text-xs opacity-70">
-                  Qty: {item.quantity}
-                </p>
+                <p className="text-xs opacity-70">Qty: {item.quantity}</p>
               </div>
 
               <p className="text-sm font-medium">
@@ -130,7 +163,7 @@ export default function StoreOrderReceiptPage() {
 
         {/* TOTAL */}
         <div className="mt-4 text-right text-lg font-semibold">
-          Total: £{order.total.toFixed(2)}
+          Total paid: £{order.total.toFixed(2)}
         </div>
 
         {/* PAYMENT DETAILS */}
@@ -150,24 +183,43 @@ export default function StoreOrderReceiptPage() {
             </p>
           )}
 
-          {order.paid_at && (
-            <p className="text-sm">
-              Paid at: {new Date(order.paid_at).toLocaleString()}
-            </p>
-          )}
-
           {order.stripe_receipt_url && (
             <a
               href={order.stripe_receipt_url}
               target="_blank"
-              className="text-sm underline text-[var(--accent)] mt-2 inline-block"
+              className="text-sm underline text-accent mt-2 inline-block"
             >
-              View Stripe Receipt
+              View payment receipt
             </a>
           )}
         </div>
 
-        {/* BUTTONS */}
+        {/* REFUND DETAILS */}
+        {(order.refunded_amount != null || order.refund_processed_at) && (
+          <div className="mt-4 rounded-xl border bg-neutral-50 p-4">
+            <p className="text-sm font-semibold mb-2">Refund Details</p>
+
+            {order.refunded_amount != null && (
+              <p className="text-sm">
+                Refunded amount: £{order.refunded_amount.toFixed(2)}
+              </p>
+            )}
+
+            {order.refund_processed_at && (
+              <p className="text-sm">
+                Processed on:{" "}
+                {new Date(order.refund_processed_at).toLocaleString()}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* NEED REFUND HELP */}
+        {order.status !== "refunded" && (
+          <NeedRefundHelp orderId={order.id} />
+        )}
+
+        {/* ACTIONS */}
         <div className="mt-6 flex flex-col gap-3">
           <Link href="/dashboard/orders">
             <Button variant="neutral" size="md" className="w-full">
